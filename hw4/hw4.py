@@ -134,13 +134,29 @@ def run_p15(train_libsvm, test_libsvm):
 	option = "-s 0" +  " -c " + str(C) + " -e 0.000001"
 	m = train(train_y, train_x, option)
 	p_label, p_acc, p_val = predict(test_y, test_x, m)
+def run_p16(train_libsvm, test_libsvm):
+	lambda_list = [0.0001, 0.01, 1, 100, 10000] # log10(_lambda) = [-4,-2,0,2,4]
+	train_y, train_x = svm_read_problem(train_libsvm)
+	test_y, test_x = svm_read_problem(test_libsvm)
+	p_acc_list = []
+	for _lambda in lambda_list:
+		print("------------------------------------------------")
+		print("lambda* =", _lambda)
+		C = 1/(2*_lambda) # lambda=0.0001 -> C=5000, lambda=0.01 -> C=50, ...
+		print("C =",C)
+		option = "-s 0" +  " -c " + str(C) + " -e 0.000001"
+		m = train(train_y, train_x, option)
+		p_label, p_acc, p_val = predict(test_y, test_x, m)
+		p_acc_list.append(p_acc)
+	best_lambda = int(math.log(lambda_list[p_acc_list.index(max(p_acc_list))], 10))
+	print("=> Best lambda:", best_lambda)
 
 def main():
 	# data processing
 	dat2libsvm("./hw4_train.dat", "./hw4_train.libsvm")
 	dat2libsvm("./hw4_test.dat", "./hw4_test.libsvm")
 	
-	run_p15("./hw4_train.libsvm", "./hw4_test.libsvm")
+	run_p16("./hw4_train.libsvm", "./hw4_test.libsvm")
 
 if __name__ == "__main__":
 	main()
