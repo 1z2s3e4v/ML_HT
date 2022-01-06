@@ -1,6 +1,7 @@
 import os
 import sys
 import random
+import numpy as np
 import math
 
 from liblinear.liblinearutil import *
@@ -8,8 +9,10 @@ from liblinear.liblinearutil import *
 def Average(lst):
 	return sum(lst) / len(lst)
 def sign(x):
-	return (x>=0)
-
+	if (x>=1/2):
+		return 1
+	else:
+		return 0
 def Phi(x,Q):
 	data = [1]
 	for q in range(1,Q+1):
@@ -27,6 +30,13 @@ def Phi_3(x):
 		for j in range(i,len(x)):
 			data.append(x[i]*x[i]*x[j])
 	return data
+def E(X,Y,W):
+	Sum=0
+	for i in range(len(X)):
+		h = 1 / (1+math.exp(-np.array(W).dot(X[i])))
+		if(sign(h) != Y[i]):
+			Sum += 1
+	return Sum/len(X)
 
 class Data:
 	def __init__(self):
@@ -87,8 +97,9 @@ def run_p12(train_libsvm, test_libsvm):
 		m = train(train_y, train_x, option)
 		p_label, p_acc, p_val = predict(test_y, test_x, m)
 		p_acc_list.append(p_acc)
-	best_lambda = int(math.log(lambda_list[p_acc_list.index(max(p_acc_list))], 10))
+	best_lambda = round(math.log(lambda_list[p_acc_list.index(max(p_acc_list))], 10))
 	print("=> Best lambda:", best_lambda)
+	print("=> Max Acc:", max(p_acc_list))
 def run_p13(train_libsvm, test_libsvm):
 	lambda_list = [0.0001, 0.01, 1, 100, 10000] # log10(_lambda) = [-4,-2,0,2,4]
 	train_y, train_x = svm_read_problem(train_libsvm)
@@ -105,6 +116,7 @@ def run_p13(train_libsvm, test_libsvm):
 		p_acc_list.append(p_acc)
 	best_lambda = round(math.log(lambda_list[p_acc_list.index(max(p_acc_list))],10))
 	print("=> Best lambda:", best_lambda)
+	print("=> Max Acc:", max(p_acc_list))
 def run_p14(train_libsvm, test_libsvm):
 	lambda_list = [0.0001, 0.01, 1, 100, 10000] # log10(_lambda) = [-4,-2,0,2,4]
 	train_y, train_x = svm_read_problem(train_libsvm)
@@ -123,6 +135,7 @@ def run_p14(train_libsvm, test_libsvm):
 		p_acc_list.append(p_acc)
 	best_lambda = round(math.log(lambda_list[p_acc_list.index(max(p_acc_list))],10))
 	print("=> Best lambda:", best_lambda)
+	print("=> Max Acc:", max(p_acc_list))
 def run_p15(train_libsvm, test_libsvm):
 	_lambda = 100 # log10(_lambda) = 2
 	train_y, train_x = svm_read_problem(train_libsvm)
@@ -137,7 +150,12 @@ def run_p15(train_libsvm, test_libsvm):
 def run_p16(train_libsvm, test_libsvm):
 	lambda_list = [0.0001, 0.01, 1, 100, 10000] # log10(_lambda) = [-4,-2,0,2,4]
 	train_y, train_x = svm_read_problem(train_libsvm)
-	test_y, test_x = svm_read_problem(test_libsvm)
+	D_5fold_y = [train_y[40*i:40*(i+1)] for i in range(5)]
+	D_5fold_x = [train_x[40*i:40*(i+1)] for i in range(5)]
+	train_5fold_y = [train_y[40:200], train_y[0:40]+train_y[80:200], train_y[0:80]+train_y[120:200], 
+					train_y[0:120]+train_y[160:200], train_y[0:160]]
+	train_5fold_x = [train_x[40:200], train_x[0:40]+train_x[80:200], train_x[0:80]+train_x[120:200], 
+					train_x[0:120]+train_x[160:200], train_x[0:160]]
 	p_acc_list = []
 	for _lambda in lambda_list:
 		print("------------------------------------------------")
@@ -145,11 +163,18 @@ def run_p16(train_libsvm, test_libsvm):
 		C = 1/(2*_lambda) # lambda=0.0001 -> C=5000, lambda=0.01 -> C=50, ...
 		print("C =",C)
 		option = "-s 0" +  " -c " + str(C) + " -e 0.000001"
-		m = train(train_y, train_x, option)
-		p_label, p_acc, p_val = predict(test_y, test_x, m)
-		p_acc_list.append(p_acc)
-	best_lambda = int(math.log(lambda_list[p_acc_list.index(max(p_acc_list))], 10))
+		acc_sum = 0
+		for i in range(5):	
+			m = train(train_5fold_y[i], train_5fold_x[i], option)
+			[W,b] = m.get_decfun()
+			p_label, p_acc, p_val = predict(D_5fold_y[i], D_5fold_x[i], m)
+			acc, e, cal = p_acc
+			acc_sum += acc
+		p_acc_list.append(acc_sum/5/100)
+		print("acc =", acc_sum/5/100)
+	best_lambda = round(math.log(lambda_list[p_acc_list.index(max(p_acc_list))], 10))
 	print("=> Best lambda:", best_lambda)
+	print("=> Max Acc:", max(p_acc_list))
 
 def main():
 	# data processing
